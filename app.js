@@ -11,19 +11,22 @@ const app = {
         firebaseSync.init();
         this.renderSetInputs();
 
+        // 同期コードをまず即時表示（Firebaseの完了を待たない）
+        this.updateSyncCodeDisplay();
+
         // Firebase とローカルをマージ
-        const merged = await firebaseSync.mergeWithLocal(this.state.history);
-        if (merged.length !== this.state.history.length) {
-            this.state.history = merged;
-            localStorage.setItem('gymfit_history', JSON.stringify(merged));
+        try {
+            const merged = await firebaseSync.mergeWithLocal(this.state.history);
+            if (merged.length !== this.state.history.length) {
+                this.state.history = merged;
+                localStorage.setItem('gymfit_history', JSON.stringify(merged));
+            }
+        } catch (e) {
+            console.warn('Firebase merge error:', e);
         }
 
         this.updateStats();
         this.renderRecentSessions();
-
-        // 同期コードを表示
-        const codeEl = document.getElementById('sync-code-value');
-        if (codeEl) codeEl.textContent = firebaseSync.getSyncCode();
 
         // Restore active session from previous reload
         const savedSession = JSON.parse(localStorage.getItem('gymfit_active_session'));
@@ -57,6 +60,7 @@ const app = {
 
         if (viewId === 'stats') {
             this.updateStats();
+            this.updateSyncCodeDisplay();
         }
     },
 
@@ -593,6 +597,11 @@ const app = {
                     stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
             </svg>
         `;
+    },
+
+    updateSyncCodeDisplay() {
+        const el = document.getElementById('sync-code-value');
+        if (el) el.textContent = firebaseSync.getSyncCode();
     },
 
     // --- Sync code management ---

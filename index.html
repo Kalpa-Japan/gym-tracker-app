@@ -7,7 +7,7 @@
     <meta name="description" content="モダンでパーソナルなジムトレーニング記録アプリ。">
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#00E676">
+    <meta name="theme-color" content="#00C4AE">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GymFit">
@@ -24,13 +24,12 @@
             <ul class="nav-links">
                 <li><button onclick="app.navigate('home')" class="nav-btn active" id="nav-home">Home</button></li>
                 <li><button onclick="app.navigate('stats')" class="nav-btn" id="nav-stats">Stats</button></li>
-                <li><button onclick="app.navigate('search')" class="nav-btn" id="nav-search">Search</button></li>
             </ul>
         </nav>
 
         <!-- Main Content Area -->
         <main id="content-area">
-            
+
             <!-- Home View -->
             <section id="view-home" class="view active">
                 <div class="hero-card" id="hero-card">
@@ -56,10 +55,10 @@
                                 <input type="text" id="input-machine-no" placeholder="例: M01" oninput="app.checkForMachineHistory()">
                             </div>
                             <div class="input-col">
-                                    <input type="text" id="input-machine-name" placeholder="例: チェストプレス" oninput="app.checkForMachineHistoryByName()">
+                                <input type="text" id="input-machine-name" placeholder="例: チェストプレス" oninput="app.checkForMachineHistoryByName()">
                             </div>
                         </div>
-                        
+
                         <div id="history-hint" class="hint-text"></div>
 
                         <div class="sets-container" id="sets-input-container">
@@ -75,11 +74,9 @@
                         </div>
                     </div>
 
-                    <div id="current-exercises-list">
-                        <!-- Dynamically populated exercises -->
-                    </div>
+                    <div id="current-exercises-list"></div>
                 </div>
-                
+
                 <div class="recent-sessions glass-card mt-2">
                     <h3>最近のセッション</h3>
                     <div id="recent-sessions-list"></div>
@@ -88,60 +85,86 @@
 
             <!-- Stats View -->
             <section id="view-stats" class="view hidden">
-                <div class="glass-card full-height">
+
+                <!-- サマリー -->
+                <div class="glass-card">
                     <h2>トレーニング統計</h2>
-                    <div class="stats-overview">
+                    <div class="stats-overview stats-3col mt-1">
                         <div class="stat-box">
-                            <span class="stat-label">今週の合計時間</span>
-                            <span class="stat-value" id="stat-weekly-time">0時間 0分</span>
+                            <span class="stat-label">合計</span>
+                            <span class="stat-value" id="stat-total-count">0<small>回</small></span>
                         </div>
                         <div class="stat-box">
-                            <span class="stat-label">今週のセッション数</span>
-                            <span class="stat-value" id="stat-weekly-count">0</span>
+                            <span class="stat-label">今月</span>
+                            <span class="stat-value" id="stat-monthly-count">0<small>回</small></span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">連続記録</span>
+                            <span class="stat-value" id="stat-streak">0<small>日</small></span>
                         </div>
                     </div>
-                    
-                    <div class="mt-2">
-                        <h3>週別セッション数（過去6週）</h3>
-                        <div id="weekly-bar-chart" class="chart-container mt-1"></div>
+                    <div class="stats-overview mt-1">
+                        <div class="stat-box">
+                            <span class="stat-label">今週の時間</span>
+                            <span class="stat-value" id="stat-weekly-time">0<small>時間</small>0<small>分</small></span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">今週のセッション</span>
+                            <span class="stat-value" id="stat-weekly-count">0<small>回</small></span>
+                        </div>
                     </div>
-                    <div class="mt-2">
-                        <h3>過去の記録</h3>
-                        <ul id="past-sessions-detailed"></ul>
+                </div>
+
+                <!-- 週別グラフ -->
+                <div class="glass-card mt-1">
+                    <h3>週別セッション数（過去6週）</h3>
+                    <div id="weekly-bar-chart" class="chart-container mt-1"></div>
+                </div>
+
+                <!-- データ管理 -->
+                <div class="glass-card mt-1">
+                    <h3>データ管理・同期</h3>
+
+                    <!-- 自動同期コード -->
+                    <div class="sync-section">
+                        <p class="data-mgmt-desc">
+                            同期コードを使ってデータをクラウドに自動保存します。<br>
+                            機種変更時は新しいiPhoneで同じコードを入力するだけで復元できます。
+                        </p>
+                        <div class="sync-code-row">
+                            <div class="sync-code-display">
+                                <span class="sync-label">同期コード</span>
+                                <span id="sync-code-value" class="sync-code">------</span>
+                            </div>
+                            <button class="sync-copy-btn" onclick="app.copySyncCode()">コピー</button>
+                        </div>
+                        <div class="sync-input-row mt-1">
+                            <input type="text" id="sync-code-input" placeholder="別のコードを入力（機種変更時）" maxlength="9" style="text-transform:uppercase">
+                            <button class="record-btn" style="width:auto;padding:0.4rem 0.8rem" onclick="app.applySyncCode()">適用</button>
+                        </div>
+                        <div id="sync-status" class="sync-status"></div>
                     </div>
 
+                    <!-- エクスポート/インポート -->
                     <div class="data-mgmt-section mt-2">
-                        <h3>データ管理</h3>
-                        <p class="data-mgmt-desc">機種変更時はエクスポートしてバックアップを保存し、新しいiPhoneでインポートしてください。</p>
+                        <p class="data-mgmt-desc">手動バックアップ（同期コードが使えない場合のみ）</p>
                         <div class="data-mgmt-buttons">
-                            <button class="export-btn" onclick="app.exportData()">エクスポート（バックアップ）</button>
-                            <button class="import-btn" onclick="app.importData()">インポート（復元）</button>
+                            <button class="export-btn" onclick="app.exportData()">エクスポート</button>
+                            <button class="import-btn" onclick="app.importData()">インポート</button>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- Search View -->
-            <section id="view-search" class="view hidden">
-                <div class="glass-card full-height">
-                    <h2>マシン履歴検索</h2>
-                    <p>マシン番号を入力して過去の負荷推移を確認します。</p>
-                    <div class="search-bar">
-                        <input type="text" id="search-machine-input" placeholder="マシン番号を入力...">
-                        <button class="primary-btn" onclick="app.searchMachine()">検索</button>
-                    </div>
-                    
-                    <div id="search-results" class="mt-2">
-                        <!-- Search results land here -->
-                    </div>
-                </div>
             </section>
         </main>
     </div>
 
+    <!-- Firebase SDK (compat v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-sync.js"></script>
     <script src="app.js"></script>
     <script>
-        // Register service worker for offline support
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(() => {});
         }

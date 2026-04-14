@@ -7,10 +7,23 @@ const app = {
         history: JSON.parse(localStorage.getItem('gymfit_history')) || []
     },
 
-    init() {
+    async init() {
+        firebaseSync.init();
         this.renderSetInputs();
+
+        // Firebase とローカルをマージ
+        const merged = await firebaseSync.mergeWithLocal(this.state.history);
+        if (merged.length !== this.state.history.length) {
+            this.state.history = merged;
+            localStorage.setItem('gymfit_history', JSON.stringify(merged));
+        }
+
         this.updateStats();
         this.renderRecentSessions();
+
+        // 同期コードを表示
+        const codeEl = document.getElementById('sync-code-value');
+        if (codeEl) codeEl.textContent = firebaseSync.getSyncCode();
 
         // Restore active session from previous reload
         const savedSession = JSON.parse(localStorage.getItem('gymfit_active_session'));
@@ -24,6 +37,7 @@ const app = {
 
     saveHistory() {
         localStorage.setItem('gymfit_history', JSON.stringify(this.state.history));
+        firebaseSync.push(this.state.history); // クラウドに自動同期
     },
 
     saveSessionState() {
@@ -448,28 +462,74 @@ const app = {
 
     updateStats() {
         const now = new Date();
+
+        // 今週の開始
         const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
         const startOfWeek = new Date(now);
         startOfWeek.setDate(diff);
         startOfWeek.setHours(0, 0, 0, 0);
 
-        let weeklyMins = 0;
-        let weeklyCount = 0;
+        // 今月の開始
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        let weeklyMins = 0, weeklyCount = 0, monthlyCount = 0;
 
         this.state.history.forEach(s => {
             if (s.startTime >= startOfWeek.getTime()) {
                 weeklyMins += (s.durationMinutes || 0);
                 weeklyCount++;
             }
+            if (s.startTime >= startOfMonth.getTime()) {
+                monthlyCount++;
+            }
         });
 
         const hrs = Math.floor(weeklyMins / 60);
         const mins = weeklyMins % 60;
-        document.getElementById('stat-weekly-time').textContent = `${hrs}時間 ${mins}分`;
-        document.getElementById('stat-weekly-count').textContent = `${weeklyCount}回`;
+
+        // 既存
+        document.getElementById('stat-weekly-time').innerHTML  = `${hrs}<small>時間</small>${mins}<small>分</small>`;
+        document.getElementById('stat-weekly-count').innerHTML = `${weeklyCount}<small>回</small>`;
+
+        // 新規
+        document.getElementById('stat-total-count').innerHTML   = `${this.state.history.length}<small>回</small>`;
+        document.getElementById('stat-monthly-count').innerHTML = `${monthlyCount}<small>回</small>`;
+        document.getElementById('stat-streak').innerHTML        = `${this.calculateStreak()}<small>日</small>`;
 
         this.renderWeeklyBarChart();
+    },
+
+    /**
+     * 連続してトレーニングした日数を計算する。
+     * 今日トレーニングがない場合は昨日から遡る。
+     */
+    calculateStreak() {
+        if (this.state.history.length === 0) return 0;
+
+        const dayKey = ts => {
+            const d = new Date(ts);
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        };
+        const trainedDays = new Set(this.state.history.map(s => dayKey(s.startTime)));
+
+        const today = new Date();
+        const todayKey = dayKey(today.getTime());
+
+        // 今日トレーニングしていなければ昨日から数える
+        const startOffset = trainedDays.has(todayKey) ? 0 : 1;
+        let streak = 0;
+
+        for (let i = startOffset; i < 365; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            if (trainedDays.has(dayKey(d.getTime()))) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+        return streak;
     },
 
     /**
@@ -533,6 +593,41 @@ const app = {
                     stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
             </svg>
         `;
+    },
+
+    // --- Sync code management ---
+
+    copySyncCode() {
+        const code = firebaseSync.getSyncCode();
+        navigator.clipboard.writeText(code).then(() => {
+            firebaseSync.showStatus('コピーしました！', false);
+            setTimeout(() => firebaseSync.showStatus('同期済み ✓', false), 2000);
+        }).catch(() => {
+            firebaseSync.showStatus(code, false);
+        });
+    },
+
+    async applySyncCode() {
+        const input = document.getElementById('sync-code-input');
+        const newCode = input.value.trim().toUpperCase();
+        if (!newCode || newCode.length < 4) {
+            alert('有効な同期コードを入力してください。');
+            return;
+        }
+        if (!confirm(`同期コードを「${newCode}」に変更します。このコードのクラウドデータと統合されます。よろしいですか？`)) return;
+
+        firebaseSync.setSyncCode(newCode);
+        document.getElementById('sync-code-value').textContent = newCode;
+        input.value = '';
+
+        // 新しいコードでデータを取得してマージ
+        firebaseSync.showStatus('同期中...', false);
+        const merged = await firebaseSync.mergeWithLocal(this.state.history);
+        this.state.history = merged;
+        this.saveHistory();
+        this.updateStats();
+        this.renderRecentSessions();
+        alert('同期完了しました。');
     },
 
     // --- Data management ---

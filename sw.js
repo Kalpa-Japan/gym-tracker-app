@@ -5,6 +5,7 @@ const ASSETS = [
     '/',
     '/index.html',
     '/app.js',
+    '/firebase-sync.js',
     '/styles.css',
     '/manifest.json',
     '/icons/icon.svg'

@@ -86,8 +86,6 @@ const app = {
             exercises: []
         };
 
-        document.getElementById('session-start-time').textContent =
-            now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         this.startTimer();
         this.toggleActiveSessionUI(true);
         this.saveSessionState();

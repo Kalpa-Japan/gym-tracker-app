@@ -3,8 +3,8 @@
     --bg-secondary: #151A22;
     --glass-bg: rgba(21, 26, 34, 0.7);
     --glass-border: rgba(255, 255, 255, 0.1);
-    --accent-primary: #00E676;
-    --accent-hover: #00C853;
+    --accent-primary: #00C4AE;
+    --accent-hover: #00A896;
     --accent-danger: #FF1744;
     --text-main: #F5F7FA;
     --text-muted: #8E99A8;
@@ -261,10 +261,16 @@ button {
     gap: 0.5rem;
 }
 
-.session-start {
+.session-time-block {
     flex: 1;
-    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.session-label {
+    font-size: 0.75rem;
     color: var(--text-muted);
+    margin-bottom: 0.1rem;
 }
 
 .danger-btn-sm {

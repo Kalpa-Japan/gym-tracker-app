@@ -42,10 +42,12 @@
                 <div id="active-session-area" class="hidden">
                     <div class="session-info glass-card">
                         <div class="session-info-row">
-                            <span class="session-start">開始: <span id="session-start-time"></span></span>
+                            <div class="session-time-block">
+                                <span class="session-label">トレーニング時間</span>
+                                <span class="timer" id="session-timer">00:00:00</span>
+                            </div>
                             <button id="btn-end-session" class="danger-btn-sm" onclick="app.endSession()">トレーニングを終了</button>
                         </div>
-                        <p class="timer" id="session-timer">00:00:00</p>
                     </div>
 
                     <div class="add-exercise-card glass-card">

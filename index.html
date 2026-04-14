@@ -66,11 +66,13 @@
                             <!-- Dynamically populated by app.renderSetInputs() -->
                         </div>
                         <div class="set-controls">
-                            <button class="set-ctrl-btn" onclick="app.removeSet()">− セット削除</button>
+                            <button class="set-ctrl-btn" onclick="app.removeSet()">−</button>
                             <span id="set-count-display">3 セット</span>
-                            <button class="set-ctrl-btn" onclick="app.addSet()">＋ セット追加</button>
+                            <button class="set-ctrl-btn" onclick="app.addSet()">＋</button>
                         </div>
-                        <button class="secondary-btn" onclick="app.addExercise()">この種目を記録</button>
+                        <div class="record-btn-row">
+                            <button class="record-btn" onclick="app.addExercise()">この種目を記録</button>
+                        </div>
                     </div>
 
                     <div id="current-exercises-list">

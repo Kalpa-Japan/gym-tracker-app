@@ -55,7 +55,7 @@ const app = {
             html += `
                 <div class="set-row">
                     <span>Set ${i}</span>
-                    <input type="number" id="input-load-${i}" placeholder="負荷 (kg)" class="mini-input">
+                    <input type="number" id="input-load-${i}" placeholder="負荷 (kg)" class="mini-input load-input">
                     <input type="number" id="input-reps-${i}" placeholder="回数" class="mini-input">
                 </div>
             `;

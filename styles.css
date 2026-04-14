@@ -179,6 +179,10 @@ input:focus {
     text-align: center;
 }
 
+.load-input {
+    width: 144px;
+}
+
 /* Sets Container */
 .sets-container {
     background: rgba(0,0,0,0.2);
@@ -415,21 +419,52 @@ button {
     justify-content: center;
     gap: 0.8rem;
     margin: 0.3rem 0 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
 }
 
+#set-count-display {
+    font-size: 0.82rem;
+}
+
 .set-ctrl-btn {
-    background: rgba(0, 230, 118, 0.1);
+    background: rgba(0, 196, 174, 0.1);
     color: var(--accent-primary);
     border: 1px solid var(--accent-primary);
-    padding: 0.3rem 0.8rem;
-    font-size: 1rem;
+    padding: 0.15rem 0.6rem;
+    font-size: 1.1rem;
     width: auto;
+    line-height: 1;
+    border-radius: 50%;
 }
 
 .set-ctrl-btn:hover {
-    background: rgba(0, 230, 118, 0.2);
+    background: rgba(0, 196, 174, 0.2);
+}
+
+/* この種目を記録ボタン */
+.record-btn-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.record-btn {
+    flex: 1;
+    max-width: 50%;
+    background: var(--accent-primary);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.3s;
+}
+
+.record-btn:hover {
+    background: var(--accent-hover);
 }
 
 /* Delete exercise button */

@@ -135,15 +135,6 @@ main {
     font-size: 0.9rem;
 }
 
-/* セッション中はヒーローカードを最小化 */
-.hero-card.compact {
-    padding: 0.4rem 1rem;
-}
-
-.hero-card.compact h2,
-.hero-card.compact #current-status-text {
-    display: none;
-}
 
 /* Forms & Inputs */
 .form-group {
@@ -267,19 +258,44 @@ button {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .session-start {
+    flex: 1;
     font-size: 0.85rem;
     color: var(--text-muted);
+}
+
+.danger-btn-sm {
+    flex: 1;
+    background: var(--accent-danger);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+}
+
+.danger-btn-sm:hover {
+    background: #D50000;
 }
 
 .timer {
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--accent-primary);
-    margin: 0;
+    margin: 0.3rem 0 0;
     font-variant-numeric: tabular-nums;
+}
+
+/* マシン番号は幅を半分に */
+.machine-no-col {
+    flex: 1 !important;
+    max-width: 35%;
 }
 
 /* Exercise item */

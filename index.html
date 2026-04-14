@@ -33,29 +33,27 @@
             
             <!-- Home View -->
             <section id="view-home" class="view active">
-                <div class="hero-card">
+                <div class="hero-card" id="hero-card">
                     <h2>今日のトレーニングを始めましょう</h2>
                     <p id="current-status-text">現在トレーニングは行っていません</p>
                     <button id="btn-start-session" class="primary-btn pulse" onclick="app.startSession()">トレーニングを開始</button>
-                    <button id="btn-end-session" class="danger-btn hidden" onclick="app.endSession()">トレーニングを終了</button>
                 </div>
 
                 <div id="active-session-area" class="hidden">
                     <div class="session-info glass-card">
                         <div class="session-info-row">
                             <span class="session-start">開始: <span id="session-start-time"></span></span>
-                            <p class="timer" id="session-timer">00:00:00</p>
+                            <button id="btn-end-session" class="danger-btn-sm" onclick="app.endSession()">トレーニングを終了</button>
                         </div>
+                        <p class="timer" id="session-timer">00:00:00</p>
                     </div>
 
                     <div class="add-exercise-card glass-card">
                         <div class="form-group row">
-                            <div class="input-col">
-                                <label>マシン番号</label>
+                            <div class="input-col machine-no-col">
                                 <input type="text" id="input-machine-no" placeholder="例: M01" oninput="app.checkForMachineHistory()">
                             </div>
                             <div class="input-col">
-                                <label>種目</label>
                                 <input type="text" id="input-machine-name" placeholder="例: チェストプレス">
                             </div>
                         </div>

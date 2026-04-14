@@ -416,14 +416,20 @@ button {
 .set-controls {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
     margin: 0.4rem 0 0;
+}
+
+.set-ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 #set-count-display {
     font-size: 0.82rem;
     color: var(--text-muted);
-    min-width: 1.2rem;
+    min-width: 1rem;
     text-align: center;
 }
 
@@ -431,11 +437,12 @@ button {
     background: var(--accent-primary);
     color: #fff;
     border: none;
-    padding: 0.3rem 0.7rem;
+    width: 3rem;           /* 3倍幅 */
+    padding: 0.4rem 0;    /* 記録ボタンと同じ縦幅 */
     font-size: 1rem;
-    width: auto;
     line-height: 1;
     border-radius: 8px;
+    text-align: center;
     flex-shrink: 0;
 }
 
@@ -443,8 +450,9 @@ button {
     background: var(--accent-hover);
 }
 
+/* 終了ボタンと同じ幅（session-info-rowのflex:1と揃える） */
 .record-btn {
-    flex: 1;
+    width: calc(50% - 0.25rem);
     background: var(--accent-primary);
     color: #fff;
     font-size: 0.82rem;

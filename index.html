@@ -66,9 +66,11 @@
                             <!-- Dynamically populated by app.renderSetInputs() -->
                         </div>
                         <div class="set-controls">
-                            <button class="set-ctrl-btn" onclick="app.removeSet()">−</button>
-                            <span id="set-count-display">3</span>
-                            <button class="set-ctrl-btn" onclick="app.addSet()">＋</button>
+                            <div class="set-ctrl-group">
+                                <button class="set-ctrl-btn" onclick="app.removeSet()">−</button>
+                                <span id="set-count-display">3</span>
+                                <button class="set-ctrl-btn" onclick="app.addSet()">＋</button>
+                            </div>
                             <button class="record-btn" onclick="app.addExercise()">この種目を記録</button>
                         </div>
                     </div>

@@ -53,7 +53,7 @@ const app = {
         let html = '';
         for (let i = 1; i <= this.state.currentSets; i++) {
             // Set 1 inputs trigger auto-copy to other sets when no history
-            const onSet1 = i === 1 ? 'oninput="app.onSet1Change()"' : '';
+            const onSet1 = i === 1 ? 'onchange="app.onSet1Change()"' : '';
             html += `
                 <div class="set-row">
                     <span>Set ${i}</span>

@@ -52,7 +52,10 @@ const app = {
     },
 
     navigate(viewId) {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => {
+            v.classList.remove('active');
+            v.classList.remove('hidden'); // hidden + !important がactiveを上書きするのを防ぐ
+        });
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
         document.getElementById(`view-${viewId}`).classList.add('active');

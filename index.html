@@ -56,7 +56,7 @@
                                 <input type="text" id="input-machine-no" placeholder="例: M01" oninput="app.checkForMachineHistory()">
                             </div>
                             <div class="input-col">
-                                <input type="text" id="input-machine-name" placeholder="例: チェストプレス">
+                                    <input type="text" id="input-machine-name" placeholder="例: チェストプレス" oninput="app.checkForMachineHistoryByName()">
                             </div>
                         </div>
                         
@@ -67,10 +67,8 @@
                         </div>
                         <div class="set-controls">
                             <button class="set-ctrl-btn" onclick="app.removeSet()">−</button>
-                            <span id="set-count-display">3 セット</span>
+                            <span id="set-count-display">3</span>
                             <button class="set-ctrl-btn" onclick="app.addSet()">＋</button>
-                        </div>
-                        <div class="record-btn-row">
                             <button class="record-btn" onclick="app.addExercise()">この種目を記録</button>
                         </div>
                     </div>

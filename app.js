@@ -52,16 +52,18 @@ const app = {
         const container = document.getElementById('sets-input-container');
         let html = '';
         for (let i = 1; i <= this.state.currentSets; i++) {
+            // Set 1 inputs trigger auto-copy to other sets when no history
+            const onSet1 = i === 1 ? 'oninput="app.onSet1Change()"' : '';
             html += `
                 <div class="set-row">
                     <span>Set ${i}</span>
-                    <input type="number" id="input-load-${i}" placeholder="負荷 (kg)" class="mini-input load-input">
-                    <input type="number" id="input-reps-${i}" placeholder="回数" class="mini-input">
+                    <input type="number" id="input-load-${i}" placeholder="負荷 (kg)" class="mini-input load-input" ${onSet1}>
+                    <input type="number" id="input-reps-${i}" placeholder="回数" class="mini-input" ${onSet1}>
                 </div>
             `;
         }
         container.innerHTML = html;
-        document.getElementById('set-count-display').textContent = `${this.state.currentSets} セット`;
+        document.getElementById('set-count-display').textContent = `${this.state.currentSets}`;
     },
 
     addSet() {
@@ -255,6 +257,58 @@ const app = {
 
         hintEl.textContent = '新規マシンです';
         this.state.autofilledMachine = null;
+    },
+
+    // 種目名で履歴を検索して自動入力
+    checkForMachineHistoryByName() {
+        const mName = document.getElementById('input-machine-name').value.trim().toLowerCase();
+        const hintEl = document.getElementById('history-hint');
+        const noInput = document.getElementById('input-machine-no');
+
+        if (mName.length < 1) {
+            hintEl.textContent = '';
+            this.state.autofilledMachine = null;
+            return;
+        }
+
+        for (let session of this.state.history) {
+            for (let ex of session.exercises) {
+                if (ex.machineName.toLowerCase().includes(mName)) {
+                    const maxLoad = Math.max(...ex.sets.map(s => s.load));
+                    hintEl.textContent = `過去: ${ex.machineNo}（最高負荷: ${maxLoad}kg）※前回の記録を自動入力`;
+
+                    if (!noInput.value) noInput.value = ex.machineNo;
+
+                    if (this.state.autofilledMachine !== mName) {
+                        this.state.currentSets = ex.sets.length;
+                        this.renderSetInputs();
+                        ex.sets.forEach((s, i) => {
+                            document.getElementById(`input-load-${i + 1}`).value = s.load;
+                            document.getElementById(`input-reps-${i + 1}`).value = s.reps;
+                        });
+                        this.state.autofilledMachine = mName;
+                    }
+                    return;
+                }
+            }
+        }
+        hintEl.textContent = '新規マシンです';
+        this.state.autofilledMachine = null;
+    },
+
+    // 過去データなしの場合、Set1の値をSet2以降にコピー
+    onSet1Change() {
+        if (this.state.autofilledMachine) return; // 履歴自動入力済みなら何もしない
+
+        const load1 = document.getElementById('input-load-1')?.value;
+        const reps1 = document.getElementById('input-reps-1')?.value;
+
+        for (let i = 2; i <= this.state.currentSets; i++) {
+            const loadEl = document.getElementById(`input-load-${i}`);
+            const repsEl = document.getElementById(`input-reps-${i}`);
+            if (loadEl && !loadEl.value && load1) loadEl.value = load1;
+            if (repsEl && !repsEl.value && reps1) repsEl.value = reps1;
+        }
     },
 
     // --- Search & Chart ---

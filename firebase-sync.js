@@ -3,12 +3,12 @@
 // 下記の値を Firebase Console から取得して入力してください
 // ================================================================
 const FIREBASE_CONFIG = {
-    apiKey:            "",   // ← 入力してください
-    authDomain:        "",
-    projectId:         "",
-    storageBucket:     "",
-    messagingSenderId: "",
-    appId:             ""
+    apiKey:            "AIzaSyCrEzuIP2-foQV1gWFzydx24UyzIt49cdY",
+    authDomain:        "kalpa-1cd0b.firebaseapp.com",
+    projectId:         "kalpa-1cd0b",
+    storageBucket:     "kalpa-1cd0b.firebasestorage.app",
+    messagingSenderId: "644140276952",
+    appId:             "1:644140276952:web:2541498c07162dc164cbad"
 };
 // ================================================================
 

@@ -122,16 +122,19 @@ const app = {
         const activeArea = document.getElementById('active-session-area');
         const statusText = document.getElementById('current-status-text');
 
+        const heroCard = document.querySelector('.hero-card');
         if (isActive) {
             btnStart.classList.add('hidden');
             btnEnd.classList.remove('hidden');
             activeArea.classList.remove('hidden');
             statusText.textContent = '現在トレーニング中です！';
+            heroCard.classList.add('compact');
         } else {
             btnStart.classList.remove('hidden');
             btnEnd.classList.add('hidden');
             activeArea.classList.add('hidden');
             statusText.textContent = '現在トレーニングは行っていません';
+            heroCard.classList.remove('compact');
 
             document.getElementById('input-machine-no').value = '';
             document.getElementById('input-machine-name').value = '';

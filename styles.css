@@ -41,7 +41,7 @@ body {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--glass-border);
-    padding: 1rem 1.5rem;
+    padding: 0.6rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -85,7 +85,7 @@ body {
 
 /* Main */
 main {
-    padding: 0.8rem;
+    padding: 0.5rem;
     flex-grow: 1;
 }
 
@@ -109,38 +109,50 @@ main {
     backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    padding: 0.7rem;
+    margin-bottom: 0.5rem;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
 }
 
 .hero-card {
     text-align: center;
-    padding: 2rem 1rem;
+    padding: 1.2rem 1rem;
     background: linear-gradient(145deg, rgba(21,26,34,0.9), rgba(11,14,20,0.9));
     border-radius: 12px;
     border: 1px solid var(--glass-border);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+    transition: padding 0.2s;
 }
 
 .hero-card h2 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
 }
 
 .hero-card p {
     color: var(--text-muted);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+/* セッション中はヒーローカードを最小化 */
+.hero-card.compact {
+    padding: 0.4rem 1rem;
+}
+
+.hero-card.compact h2,
+.hero-card.compact #current-status-text {
+    display: none;
 }
 
 /* Forms & Inputs */
 .form-group {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .row {
     display: flex;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .input-col {
@@ -150,18 +162,18 @@ main {
 }
 
 label {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.2rem;
 }
 
 input {
     background: rgba(0,0,0,0.3);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    padding: 0.6rem;
+    padding: 0.45rem 0.6rem;
     color: var(--text-main);
-    font-size: 1rem;
+    font-size: 0.95rem;
     outline: none;
     transition: border-color 0.3s;
 }
@@ -171,24 +183,24 @@ input:focus {
 }
 
 .mini-input {
-    width: 80px;
-    padding: 0.6rem;
+    width: 72px;
+    padding: 0.45rem;
     text-align: center;
 }
 
 /* Sets Container */
 .sets-container {
     background: rgba(0,0,0,0.2);
-    border-radius: 12px;
-    padding: 0.8rem;
-    margin: 0.8rem 0;
+    border-radius: 10px;
+    padding: 0.5rem 0.6rem;
+    margin: 0.3rem 0;
 }
 
 .set-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
 }
 
 .set-row:last-child {
@@ -197,7 +209,8 @@ input:focus {
 
 .set-row span {
     font-weight: 600;
-    width: 60px;
+    font-size: 0.9rem;
+    width: 50px;
 }
 
 /* Buttons */
@@ -250,11 +263,22 @@ button {
 .hidden { display: none !important; }
 .mt-2 { margin-top: 2rem; }
 
+.session-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.session-start {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
 .timer {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: var(--accent-primary);
-    margin: 0.5rem 0;
+    margin: 0;
     font-variant-numeric: tabular-nums;
 }
 
@@ -346,10 +370,10 @@ button {
 }
 
 .hint-text {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: var(--accent-primary);
-    margin-top: 0.5rem;
-    min-height: 1.2em;
+    margin-top: 0.2rem;
+    min-height: 1em;
 }
 
 .pulse {
@@ -367,9 +391,9 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    margin: 0.6rem 0 0.8rem;
-    font-size: 0.9rem;
+    gap: 0.8rem;
+    margin: 0.3rem 0 0.5rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 

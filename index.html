@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GymFit Tracker</title>
     <meta name="description" content="モダンでパーソナルなジムトレーニング記録アプリ。">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00E676">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GymFit">
+    <link rel="apple-touch-icon" href="/icons/icon.svg">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -55,22 +62,13 @@
                         
                         <div id="history-hint" class="hint-text"></div>
 
-                        <div class="sets-container">
-                            <div class="set-row">
-                                <span>Set 1</span>
-                                <input type="number" id="input-load-1" placeholder="負荷 (kg)" class="mini-input">
-                                <input type="number" id="input-reps-1" placeholder="回数" class="mini-input">
-                            </div>
-                            <div class="set-row">
-                                <span>Set 2</span>
-                                <input type="number" id="input-load-2" placeholder="負荷 (kg)" class="mini-input">
-                                <input type="number" id="input-reps-2" placeholder="回数" class="mini-input">
-                            </div>
-                            <div class="set-row">
-                                <span>Set 3</span>
-                                <input type="number" id="input-load-3" placeholder="負荷 (kg)" class="mini-input">
-                                <input type="number" id="input-reps-3" placeholder="回数" class="mini-input">
-                            </div>
+                        <div class="sets-container" id="sets-input-container">
+                            <!-- Dynamically populated by app.renderSetInputs() -->
+                        </div>
+                        <div class="set-controls">
+                            <button class="set-ctrl-btn" onclick="app.removeSet()">− セット削除</button>
+                            <span id="set-count-display">3 セット</span>
+                            <button class="set-ctrl-btn" onclick="app.addSet()">＋ セット追加</button>
                         </div>
                         <button class="secondary-btn" onclick="app.addExercise()">この種目を記録</button>
                     </div>
@@ -101,10 +99,22 @@
                         </div>
                     </div>
                     
-                    <div class="stats-chart-placeholder mt-2">
-                        <!-- Simple visual representation could go here -->
+                    <div class="mt-2">
+                        <h3>週別セッション数（過去6週）</h3>
+                        <div id="weekly-bar-chart" class="chart-container mt-1"></div>
+                    </div>
+                    <div class="mt-2">
                         <h3>過去の記録</h3>
                         <ul id="past-sessions-detailed"></ul>
+                    </div>
+
+                    <div class="data-mgmt-section mt-2">
+                        <h3>データ管理</h3>
+                        <p class="data-mgmt-desc">機種変更時はエクスポートしてバックアップを保存し、新しいiPhoneでインポートしてください。</p>
+                        <div class="data-mgmt-buttons">
+                            <button class="export-btn" onclick="app.exportData()">エクスポート（バックアップ）</button>
+                            <button class="import-btn" onclick="app.importData()">インポート（復元）</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -128,5 +138,11 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // Register service worker for offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>

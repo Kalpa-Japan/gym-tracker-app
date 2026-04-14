@@ -181,8 +181,8 @@ const app = {
         const mNo = document.getElementById('input-machine-no').value.trim();
         const mName = document.getElementById('input-machine-name').value.trim();
 
-        if (!mNo || !mName) {
-            alert('マシン番号とマシン名を入力してください。');
+        if (!mNo && !mName) {
+            alert('マシン番号か種目名を入力してください。');
             return;
         }
 

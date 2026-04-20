@@ -24,6 +24,7 @@
             <ul class="nav-links">
                 <li><button onclick="app.navigate('home')" class="nav-btn active" id="nav-home">Home</button></li>
                 <li><button onclick="app.navigate('stats')" class="nav-btn" id="nav-stats">Stats</button></li>
+                <li id="nav-auth-item"><button id="btn-auth" class="nav-btn" onclick="app.onAuthClick()">ログイン</button></li>
             </ul>
         </nav>
 
@@ -125,10 +126,37 @@
                 <div class="glass-card mt-1">
                     <h3>データ管理・同期</h3>
 
-                    <!-- 自動同期コード -->
+                    <!-- アカウント（Googleログイン） -->
+                    <div class="account-section" id="account-section">
+                        <!-- 未ログイン時 -->
+                        <div id="account-logged-out">
+                            <p class="data-mgmt-desc">
+                                Googleアカウントでログインすると、Safariの履歴を消去しても<br>
+                                再ログインで全データを復元できます（推奨）。
+                            </p>
+                            <button class="primary-btn" id="btn-google-login" onclick="app.loginWithGoogle()">
+                                Googleでログイン
+                            </button>
+                        </div>
+                        <!-- ログイン時 -->
+                        <div id="account-logged-in" class="hidden">
+                            <div class="account-row">
+                                <div class="account-info">
+                                    <span class="sync-label">ログイン中</span>
+                                    <span id="account-email" class="account-email">-</span>
+                                </div>
+                                <button class="sync-copy-btn" onclick="app.logout()">ログアウト</button>
+                            </div>
+                            <div id="auth-status" class="sync-status"></div>
+                        </div>
+                    </div>
+                    <hr class="account-divider">
+
+                    <!-- 自動同期コード（フォールバック） -->
                     <div class="sync-section">
                         <p class="data-mgmt-desc">
-                            同期コードを使ってデータをクラウドに自動保存します。<br>
+                            <strong>バックアップ手段: 同期コード</strong><br>
+                            ログインしない場合はこの同期コードでデータをクラウド保存します。<br>
                             機種変更時は新しいiPhoneで同じコードを入力するだけで復元できます。
                         </p>
                         <div class="sync-code-row">
@@ -161,6 +189,7 @@
 
     <!-- Firebase SDK (compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="firebase-sync.js"></script>
     <script src="app.js"></script>

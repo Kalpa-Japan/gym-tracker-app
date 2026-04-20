@@ -632,3 +632,58 @@ button {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-main);
 }
+
+/* Account / Auth */
+.account-section {
+    margin-top: 0.3rem;
+}
+
+.account-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+    gap: 0.5rem;
+}
+
+.account-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.account-email {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+}
+
+.account-divider {
+    border: 0;
+    border-top: 1px solid var(--glass-border);
+    margin: 1rem 0;
+}
+
+.auth-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: #000;
+    font-weight: 700;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+#btn-auth {
+    padding: 0.25rem 0.4rem;
+}

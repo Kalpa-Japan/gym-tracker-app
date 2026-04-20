@@ -14,10 +14,14 @@ const FIREBASE_CONFIG = {
 
 const firebaseSync = {
     db: null,
+    auth: null,
     isReady: false,
+    currentUser: null,
+    authReady: false,
+    authReadyResolvers: [],
+    onAuthChangeCallback: null,
 
     init() {
-        // 設定が未入力の場合はスキップ（オフラインモードで動作）
         if (!FIREBASE_CONFIG.apiKey) {
             console.info('GymFit: Firebase未設定 — ローカルのみで動作します');
             return;
@@ -27,13 +31,85 @@ const firebaseSync = {
                 firebase.initializeApp(FIREBASE_CONFIG);
             }
             this.db = firebase.firestore();
+            this.auth = firebase.auth();
             this.isReady = true;
+
+            // セッションをブラウザに永続化（通常リロードで維持）
+            this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e =>
+                console.warn('Auth persistence設定失敗:', e)
+            );
+
+            // リダイレクト復帰（iOS Safari向け）
+            this.auth.getRedirectResult().catch(e => {
+                if (e && e.code) console.warn('getRedirectResult エラー:', e);
+            });
+
+            // 認証状態の変化を監視
+            this.auth.onAuthStateChanged(user => {
+                this.currentUser = user || null;
+                if (!this.authReady) {
+                    this.authReady = true;
+                    this.authReadyResolvers.forEach(r => r());
+                    this.authReadyResolvers = [];
+                }
+                if (typeof this.onAuthChangeCallback === 'function') {
+                    this.onAuthChangeCallback(this.currentUser);
+                }
+            });
         } catch (e) {
             console.warn('Firebase初期化エラー:', e);
         }
     },
 
-    // 同期コードを取得（なければ自動生成）
+    // 認証状態が確定するまで待機
+    waitForAuthReady() {
+        if (!this.isReady) return Promise.resolve();
+        if (this.authReady) return Promise.resolve();
+        return new Promise(resolve => this.authReadyResolvers.push(resolve));
+    },
+
+    // iOS Safari / PWAの判定
+    isIosLike() {
+        const ua = navigator.userAgent || '';
+        const isIos = /iPhone|iPad|iPod/.test(ua);
+        const isStandalone = window.navigator.standalone === true;
+        return isIos || isStandalone;
+    },
+
+    // Googleログイン
+    async loginWithGoogle() {
+        if (!this.isReady) {
+            alert('Firebaseが初期化されていません。');
+            return;
+        }
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+            if (this.isIosLike()) {
+                // iOS ではリダイレクトフロー（popupがブロックされやすい）
+                await this.auth.signInWithRedirect(provider);
+                // 以後のフローは getRedirectResult / onAuthStateChanged で継続
+                return null;
+            }
+            const result = await this.auth.signInWithPopup(provider);
+            return result.user;
+        } catch (e) {
+            console.warn('Googleログインエラー:', e);
+            this.showStatus('ログイン失敗', true);
+            throw e;
+        }
+    },
+
+    async logout() {
+        if (!this.isReady) return;
+        try {
+            await this.auth.signOut();
+            this.showStatus('ログアウトしました', false);
+        } catch (e) {
+            console.warn('ログアウトエラー:', e);
+        }
+    },
+
+    // 同期コードを取得（なければ自動生成）— 未ログイン時のフォールバック
     getSyncCode() {
         let code = localStorage.getItem('gymfit_sync_code');
         if (!code) {
@@ -44,22 +120,33 @@ const firebaseSync = {
         return code;
     },
 
-    // 同期コードを変更（機種変更時に旧コードを入力）
     setSyncCode(code) {
         const cleaned = code.toUpperCase().trim();
         localStorage.setItem('gymfit_sync_code', cleaned);
         return cleaned;
     },
 
-    // Firestoreにデータを保存
+    // 現在アクティブなFirestoreドキュメント参照を返す
+    // ログイン時 → users/{uid} / 未ログイン時 → users/{syncCode}
+    getActiveDocRef() {
+        if (!this.db) return null;
+        if (this.currentUser) {
+            return this.db.collection('users').doc(this.currentUser.uid);
+        }
+        return this.db.collection('users').doc(this.getSyncCode());
+    },
+
     async push(history) {
         if (!this.isReady) return;
-        const code = this.getSyncCode();
+        const ref = this.getActiveDocRef();
+        if (!ref) return;
         try {
-            await this.db.collection('users').doc(code).set({
+            const payload = {
                 history,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            };
+            if (this.currentUser) payload.ownerUid = this.currentUser.uid;
+            await ref.set(payload, { merge: true });
             this.showStatus('同期済み ✓', false);
         } catch (e) {
             console.warn('同期（送信）エラー:', e);
@@ -67,12 +154,12 @@ const firebaseSync = {
         }
     },
 
-    // Firestoreからデータを取得
     async pull() {
         if (!this.isReady) return null;
-        const code = this.getSyncCode();
+        const ref = this.getActiveDocRef();
+        if (!ref) return null;
         try {
-            const doc = await this.db.collection('users').doc(code).get();
+            const doc = await ref.get();
             if (doc.exists) return doc.data().history || [];
         } catch (e) {
             console.warn('同期（受信）エラー:', e);
@@ -80,7 +167,37 @@ const firebaseSync = {
         return null;
     },
 
-    // ローカルとリモートをマージ（IDで重複排除）
+    // UIDを指定して読み取る（移行処理用）
+    async pullUid(uid) {
+        if (!this.isReady || !uid) return null;
+        try {
+            const doc = await this.db.collection('users').doc(uid).get();
+            if (doc.exists) return doc.data();
+        } catch (e) {
+            console.warn('UID読み取りエラー:', e);
+        }
+        return null;
+    },
+
+    // 同期コードを指定して読み取る（移行処理用）
+    async pullSyncCode(code) {
+        if (!this.isReady || !code) return null;
+        try {
+            const doc = await this.db.collection('users').doc(code).get();
+            if (doc.exists) return doc.data();
+        } catch (e) {
+            console.warn('同期コード読み取りエラー:', e);
+        }
+        return null;
+    },
+
+    // 重複排除マージ（IDベース）
+    mergeById(a, b) {
+        const ids = new Set(a.map(s => s.id));
+        return [...a, ...b.filter(s => !ids.has(s.id))].sort((x, y) => y.startTime - x.startTime);
+    },
+
+    // ローカルとリモートをマージ（現在のアクティブドキュメントに対して）
     async mergeWithLocal(localHistory) {
         this.showStatus('同期中...', false);
         const remote = await this.pull();
@@ -88,17 +205,63 @@ const firebaseSync = {
             this.showStatus(this.isReady ? '同期済み ✓' : '', false);
             return localHistory;
         }
-        const localIds = new Set(localHistory.map(s => s.id));
-        const merged = [...localHistory, ...remote.filter(s => !localIds.has(s.id))]
-            .sort((a, b) => b.startTime - a.startTime);
+        const merged = this.mergeById(localHistory, remote);
+        this.showStatus('同期済み ✓', false);
+        return merged;
+    },
+
+    // 初回ログイン時の移行処理
+    // users/{uid} が既存ならそれとマージ
+    // 未存在ならローカル履歴＋旧syncCodeのデータをマージしてusers/{uid}へ保存
+    async migrateOnFirstLogin(uid, localHistory) {
+        if (!this.isReady) return localHistory;
+        this.showStatus('同期中...', false);
+        const uidData = await this.pullUid(uid);
+        if (uidData) {
+            // 既存UIDドキュメントとマージ
+            const remote = uidData.history || [];
+            const merged = this.mergeById(localHistory, remote);
+            if (merged.length > remote.length) {
+                await this.db.collection('users').doc(uid).set({
+                    history: merged,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    ownerUid: uid
+                }, { merge: true });
+            }
+            this.showStatus('同期済み ✓', false);
+            return merged;
+        }
+
+        // 新規UID — 旧sync-codeのデータも取り込み
+        const legacyCode = localStorage.getItem('gymfit_sync_code');
+        let legacyHistory = [];
+        if (legacyCode) {
+            const legacyData = await this.pullSyncCode(legacyCode);
+            if (legacyData && Array.isArray(legacyData.history)) {
+                legacyHistory = legacyData.history;
+            }
+        }
+        const merged = this.mergeById(this.mergeById(localHistory, legacyHistory), []);
+        await this.db.collection('users').doc(uid).set({
+            history: merged,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            ownerUid: uid,
+            migratedFromSyncCode: legacyCode || null
+        });
         this.showStatus('同期済み ✓', false);
         return merged;
     },
 
     showStatus(msg, isError) {
         const el = document.getElementById('sync-status');
-        if (!el) return;
-        el.textContent = msg;
-        el.className = 'sync-status' + (isError ? ' sync-error' : '');
+        if (el) {
+            el.textContent = msg;
+            el.className = 'sync-status' + (isError ? ' sync-error' : '');
+        }
+        const authEl = document.getElementById('auth-status');
+        if (authEl) {
+            authEl.textContent = msg;
+            authEl.className = 'sync-status' + (isError ? ' sync-error' : '');
+        }
     }
 };

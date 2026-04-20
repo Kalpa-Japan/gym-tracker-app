@@ -14,7 +14,22 @@ const app = {
         // 同期コードをまず即時表示（Firebaseの完了を待たない）
         this.updateSyncCodeDisplay();
 
-        // Firebase とローカルをマージ
+        // 認証状態の変化を受けてUI更新・初回ログイン移行を実行
+        let prevUid = undefined; // 初回コールバックで必ず UI を更新させるため undefined
+        firebaseSync.onAuthChangeCallback = async (user) => {
+            const newUid = user ? user.uid : null;
+            this.renderAuthUI(user);
+            // null → user の遷移でのみ移行フローを発火
+            if (prevUid !== undefined && prevUid === null && newUid) {
+                await this.onLoginTransition(user);
+            }
+            prevUid = newUid;
+        };
+
+        // 認証状態が確定するまで待つ（iOS でのリダイレクト復帰も考慮）
+        await firebaseSync.waitForAuthReady();
+
+        // 現在のアクティブドキュメント（UIDまたは同期コード）とマージ
         try {
             const merged = await firebaseSync.mergeWithLocal(this.state.history);
             if (merged.length !== this.state.history.length) {
@@ -27,6 +42,7 @@ const app = {
 
         this.updateStats();
         this.renderRecentSessions();
+        this.renderAuthUI(firebaseSync.currentUser);
 
         // Restore active session from previous reload
         const savedSession = JSON.parse(localStorage.getItem('gymfit_active_session'));
@@ -35,6 +51,86 @@ const app = {
             this.startTimer();
             this.renderCurrentExercises();
             this.toggleActiveSessionUI(true);
+        }
+    },
+
+    // --- Auth ---
+
+    async onAuthClick() {
+        if (firebaseSync.currentUser) {
+            // ログイン中 → ログアウト確認
+            if (confirm('ログアウトしますか？')) {
+                await this.logout();
+            }
+        } else {
+            // 未ログイン → Statsへ移動してログインCTAを目立たせる
+            this.navigate('stats');
+            const cta = document.getElementById('btn-google-login');
+            if (cta) cta.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    },
+
+    async loginWithGoogle() {
+        try {
+            await firebaseSync.loginWithGoogle();
+            // iOS はリダイレクトで戻ってくるので、ここで何もしない
+            // popup の場合は onAuthStateChanged → onLoginTransition が発火
+        } catch (e) {
+            // エラーは firebase-sync 側で表示済み
+        }
+    },
+
+    async logout() {
+        await firebaseSync.logout();
+        // ログアウト後は sync-code ベースに戻るので UI 更新
+        this.renderAuthUI(null);
+        try {
+            const merged = await firebaseSync.mergeWithLocal(this.state.history);
+            this.state.history = merged;
+            localStorage.setItem('gymfit_history', JSON.stringify(merged));
+            this.updateStats();
+            this.renderRecentSessions();
+        } catch (e) {
+            console.warn('logout merge error:', e);
+        }
+    },
+
+    // 初回ログイン成功時の移行 + マージ
+    async onLoginTransition(user) {
+        try {
+            const merged = await firebaseSync.migrateOnFirstLogin(user.uid, this.state.history);
+            this.state.history = merged;
+            localStorage.setItem('gymfit_history', JSON.stringify(merged));
+            this.updateStats();
+            this.renderRecentSessions();
+        } catch (e) {
+            console.warn('login migration error:', e);
+        }
+    },
+
+    renderAuthUI(user) {
+        const btnAuth = document.getElementById('btn-auth');
+        const loggedOut = document.getElementById('account-logged-out');
+        const loggedIn = document.getElementById('account-logged-in');
+        const emailEl = document.getElementById('account-email');
+
+        if (user) {
+            const initial = (user.email || user.displayName || '?').trim().charAt(0).toUpperCase();
+            if (btnAuth) {
+                btnAuth.innerHTML = `<span class="auth-avatar">${initial}</span>`;
+                btnAuth.setAttribute('title', user.email || '');
+            }
+            if (loggedOut) loggedOut.classList.add('hidden');
+            if (loggedIn) loggedIn.classList.remove('hidden');
+            if (emailEl) emailEl.textContent = user.email || user.displayName || '(no email)';
+        } else {
+            if (btnAuth) {
+                btnAuth.textContent = 'ログイン';
+                btnAuth.removeAttribute('title');
+            }
+            if (loggedOut) loggedOut.classList.remove('hidden');
+            if (loggedIn) loggedIn.classList.add('hidden');
+            if (emailEl) emailEl.textContent = '-';
         }
     },
 
@@ -620,6 +716,10 @@ const app = {
     },
 
     async applySyncCode() {
+        if (firebaseSync.currentUser) {
+            alert('既にログイン中です。ログアウトしてから同期コードを使用してください。');
+            return;
+        }
         const input = document.getElementById('sync-code-input');
         const newCode = input.value.trim().toUpperCase();
         if (!newCode || newCode.length < 4) {

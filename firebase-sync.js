@@ -68,12 +68,12 @@ const firebaseSync = {
         return new Promise(resolve => this.authReadyResolvers.push(resolve));
     },
 
-    // iOS Safari / PWAの判定
-    isIosLike() {
-        const ua = navigator.userAgent || '';
-        const isIos = /iPhone|iPad|iPod/.test(ua);
-        const isStandalone = window.navigator.standalone === true;
-        return isIos || isStandalone;
+    // ホーム画面に追加されたPWAとして起動しているかを判定
+    // 通常のSafariブラウザでは false → popup方式のほうがiOSのITPを回避できる
+    isStandalonePWA() {
+        if (window.navigator.standalone === true) return true;
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+        return false;
     },
 
     // Googleログイン
@@ -84,8 +84,9 @@ const firebaseSync = {
         }
         const provider = new firebase.auth.GoogleAuthProvider();
         try {
-            if (this.isIosLike()) {
-                // iOS ではリダイレクトフロー（popupがブロックされやすい）
+            // PWAスタンドアロン時はpopup動作が不安定なのでredirectを使う
+            // 通常のブラウザ（iOS Safariブラウザも含む）はpopupでITPを回避
+            if (this.isStandalonePWA()) {
                 await this.auth.signInWithRedirect(provider);
                 return null;
             }

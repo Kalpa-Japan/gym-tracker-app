@@ -6,12 +6,12 @@
     <title>GymFit Tracker</title>
     <meta name="description" content="モダンでパーソナルなジムトレーニング記録アプリ。">
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00C4AE">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GymFit">
-    <link rel="apple-touch-icon" href="/icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -230,7 +230,7 @@
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('sw.js').catch(() => {});
         }
     </script>
 </body>

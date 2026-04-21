@@ -2,14 +2,14 @@
     "name": "GymFit Tracker",
     "short_name": "GymFit",
     "description": "ジムトレーニング記録アプリ",
-    "start_url": "/",
+    "start_url": "./",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#0B0E14",
     "theme_color": "#00E676",
     "icons": [
         {
-            "src": "/icons/icon.svg",
+            "src": "icons/icon.svg",
             "sizes": "any",
             "type": "image/svg+xml",
             "purpose": "any maskable"

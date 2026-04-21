@@ -1,14 +1,14 @@
-const CACHE_NAME = 'gymfit-v8';
+const CACHE_NAME = 'gymfit-v9';
 
 // Files to cache for offline use
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/app.js',
-    '/firebase-sync.js',
-    '/styles.css',
-    '/manifest.json',
-    '/icons/icon.svg'
+    './',
+    './index.html',
+    './app.js',
+    './firebase-sync.js',
+    './styles.css',
+    './manifest.json',
+    './icons/icon.svg'
 ];
 
 // Install: cache all assets

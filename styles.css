@@ -302,6 +302,11 @@ button {
     font-variant-numeric: tabular-nums;
 }
 
+.timer.timer-warning {
+    color: var(--accent-danger);
+    animation: pulse 1.5s infinite;
+}
+
 /* マシン番号は幅を半分に */
 .machine-no-col {
     flex: 1 !important;

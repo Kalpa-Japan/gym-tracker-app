@@ -1,3 +1,6 @@
+// セッションの最大継続時間（分）— これを超えたら自動終了扱い
+const MAX_SESSION_MINUTES = 120;
+
 const app = {
     state: {
         activeSession: null,
@@ -47,10 +50,23 @@ const app = {
         // Restore active session from previous reload
         const savedSession = JSON.parse(localStorage.getItem('gymfit_active_session'));
         if (savedSession) {
-            this.state.activeSession = savedSession;
-            this.startTimer();
-            this.renderCurrentExercises();
-            this.toggleActiveSessionUI(true);
+            const elapsedMinutes = (Date.now() - savedSession.startTime) / 60000;
+            if (elapsedMinutes > MAX_SESSION_MINUTES) {
+                // 終了忘れと判断 — 2時間にキャップして自動的に履歴へ保存
+                savedSession.durationMinutes = MAX_SESSION_MINUTES;
+                savedSession.endTime = savedSession.startTime + MAX_SESSION_MINUTES * 60000;
+                this.state.history.unshift(savedSession);
+                localStorage.setItem('gymfit_history', JSON.stringify(this.state.history));
+                localStorage.removeItem('gymfit_active_session');
+                firebaseSync.push(this.state.history);
+                this.updateStats();
+                this.renderRecentSessions();
+            } else {
+                this.state.activeSession = savedSession;
+                this.startTimer();
+                this.renderCurrentExercises();
+                this.toggleActiveSessionUI(true);
+            }
         }
     },
 
@@ -218,8 +234,11 @@ const app = {
 
         const now = new Date();
         const durationMs = now.getTime() - this.state.activeSession.startTime;
-        this.state.activeSession.endTime = now.getTime();
-        this.state.activeSession.durationMinutes = Math.round(durationMs / 60000);
+        let durationMinutes = Math.round(durationMs / 60000);
+        // 上限を超えていたらキャップ（終了忘れの保険）
+        if (durationMinutes > MAX_SESSION_MINUTES) durationMinutes = MAX_SESSION_MINUTES;
+        this.state.activeSession.endTime = this.state.activeSession.startTime + durationMinutes * 60000;
+        this.state.activeSession.durationMinutes = durationMinutes;
 
         this.state.history.unshift(this.state.activeSession);
         this.saveHistory();
@@ -268,6 +287,10 @@ const app = {
             const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
             const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
             timerEl.textContent = `${h}:${m}:${s}`;
+
+            // 2時間を超えたら警告色に切り替え（終了忘れ防止）
+            const overLimit = diff >= MAX_SESSION_MINUTES * 60000;
+            timerEl.classList.toggle('timer-warning', overLimit);
         }, 1000);
     },
 
@@ -811,8 +834,9 @@ const app = {
                 { month: 'numeric', day: 'numeric' });
             list.innerHTML += `
                 <div style="border-bottom:1px solid var(--glass-border);padding:0.8rem 0;">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
                         <span style="font-weight:600">日付: ${dateStr}</span>
+                        <button class="delete-btn" onclick="app.deleteHistorySession(${s.id})" aria-label="このセッションを削除">✕</button>
                     </div>
                     <div style="font-size:0.9rem;color:var(--text-muted);display:flex;gap:1rem;">
                         <span>種目数: ${s.exercises.length}</span>
@@ -821,6 +845,20 @@ const app = {
                 </div>
             `;
         });
+    },
+
+    // 履歴セッションを削除（確認あり）
+    deleteHistorySession(id) {
+        const idx = this.state.history.findIndex(s => s.id === id);
+        if (idx < 0) return;
+        const s = this.state.history[idx];
+        const dateStr = new Date(s.startTime).toLocaleDateString('ja-JP',
+            { month: 'numeric', day: 'numeric' });
+        if (!confirm(`${dateStr} のセッション (種目${s.exercises.length}個, ${s.durationMinutes || 0}分) を削除しますか？`)) return;
+        this.state.history.splice(idx, 1);
+        this.saveHistory();
+        this.updateStats();
+        this.renderRecentSessions();
     }
 };
 

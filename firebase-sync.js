@@ -87,16 +87,34 @@ const firebaseSync = {
             if (this.isIosLike()) {
                 // iOS ではリダイレクトフロー（popupがブロックされやすい）
                 await this.auth.signInWithRedirect(provider);
-                // 以後のフローは getRedirectResult / onAuthStateChanged で継続
                 return null;
             }
             const result = await this.auth.signInWithPopup(provider);
             return result.user;
         } catch (e) {
             console.warn('Googleログインエラー:', e);
-            this.showStatus('ログイン失敗', true);
+            const msg = this.formatAuthError(e);
+            this.showStatus(msg, true);
+            alert(msg);
             throw e;
         }
+    },
+
+    // Firebase Auth のエラーコードを日本語メッセージに変換
+    formatAuthError(e) {
+        const code = e && e.code ? e.code : '';
+        const map = {
+            'auth/operation-not-allowed': 'Googleログインが未有効です。Firebase ConsoleでGoogleプロバイダを有効化してください。',
+            'auth/unauthorized-domain': 'このドメインは承認されていません。Firebase Consoleの承認済みドメインに追加してください。',
+            'auth/popup-blocked': 'ポップアップがブロックされました。ブラウザの設定を確認してください。',
+            'auth/popup-closed-by-user': 'ログイン画面が閉じられました。',
+            'auth/cancelled-popup-request': 'ログインがキャンセルされました。',
+            'auth/network-request-failed': 'ネットワークエラー。接続を確認してください。',
+            'auth/internal-error': 'Firebase内部エラー。Consoleの設定を確認してください。'
+        };
+        if (map[code]) return `ログイン失敗: ${map[code]} (${code})`;
+        if (code) return `ログイン失敗: ${code}`;
+        return `ログイン失敗: ${e && e.message ? e.message : '不明なエラー'}`;
     },
 
     async logout() {

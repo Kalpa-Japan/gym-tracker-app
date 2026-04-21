@@ -49,6 +49,30 @@
                         </div>
                     </div>
 
+                    <div class="metrics-card glass-card">
+                        <h4 class="metrics-title">測定値（任意・空欄可）</h4>
+                        <div class="metrics-row">
+                            <div class="metrics-field">
+                                <label class="metrics-label">体重 (kg)</label>
+                                <input type="number" step="0.1" id="input-weight" placeholder="例: 70.5" onchange="app.onMetricsChange()">
+                            </div>
+                            <div class="metrics-field">
+                                <label class="metrics-label">脈拍 (bpm)</label>
+                                <input type="number" id="input-pulse" placeholder="例: 99" onchange="app.onMetricsChange()">
+                            </div>
+                        </div>
+                        <div class="metrics-row">
+                            <div class="metrics-field">
+                                <label class="metrics-label">最高血圧 (mmHg)</label>
+                                <input type="number" id="input-bp-high" placeholder="例: 115" onchange="app.onMetricsChange()">
+                            </div>
+                            <div class="metrics-field">
+                                <label class="metrics-label">最低血圧 (mmHg)</label>
+                                <input type="number" id="input-bp-low" placeholder="例: 75" onchange="app.onMetricsChange()">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="add-exercise-card glass-card">
                         <div class="form-group row">
                             <div class="input-col machine-no-col">
@@ -119,6 +143,18 @@
                 <div class="glass-card mt-1">
                     <h3>週別セッション数（過去6週）</h3>
                     <div id="weekly-bar-chart" class="chart-container mt-1"></div>
+                </div>
+
+                <!-- 血圧・脈拍の推移 -->
+                <div class="glass-card mt-1">
+                    <h3>血圧・脈拍の推移</h3>
+                    <div id="bp-chart" class="chart-container mt-1"></div>
+                </div>
+
+                <!-- 体重の推移 -->
+                <div class="glass-card mt-1">
+                    <h3>体重の推移</h3>
+                    <div id="weight-chart" class="chart-container mt-1"></div>
                 </div>
 
                 <!-- データ管理 -->

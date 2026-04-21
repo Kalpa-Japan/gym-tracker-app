@@ -307,6 +307,45 @@ button {
     animation: pulse 1.5s infinite;
 }
 
+/* Metrics (体重・血圧・脈拍) 入力カード */
+.metrics-card {
+    padding: 0.7rem;
+}
+
+.metrics-title {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.metrics-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.4rem;
+}
+
+.metrics-row:last-child {
+    margin-bottom: 0;
+}
+
+.metrics-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.metrics-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.metrics-field input {
+    font-size: 0.95rem;
+    padding: 0.4rem 0.6rem;
+}
+
 /* マシン番号は幅を半分に */
 .machine-no-col {
     flex: 1 !important;

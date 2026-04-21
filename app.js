@@ -66,6 +66,7 @@ const app = {
                 this.startTimer();
                 this.renderCurrentExercises();
                 this.toggleActiveSessionUI(true);
+                this.restoreMetricsInputs();
             }
         }
     },
@@ -218,7 +219,8 @@ const app = {
         this.state.activeSession = {
             id: Date.now(),
             startTime: now.getTime(),
-            exercises: []
+            exercises: [],
+            metrics: {}
         };
 
         this.startTimer();
@@ -226,9 +228,43 @@ const app = {
         this.saveSessionState();
     },
 
+    // 測定値フィールド (体重・血圧・脈拍) の変更をセッションに反映
+    onMetricsChange() {
+        if (!this.state.activeSession) return;
+        const readNum = (id, parser) => {
+            const v = document.getElementById(id).value.trim();
+            if (!v) return null;
+            const n = parser(v);
+            return isNaN(n) ? null : n;
+        };
+        this.state.activeSession.metrics = {
+            weight: readNum('input-weight', parseFloat),
+            bpHigh: readNum('input-bp-high', v => parseInt(v, 10)),
+            bpLow:  readNum('input-bp-low',  v => parseInt(v, 10)),
+            pulse:  readNum('input-pulse',   v => parseInt(v, 10))
+        };
+        this.saveSessionState();
+    },
+
+    // セッション復元時に測定値入力欄へ書き戻す
+    restoreMetricsInputs() {
+        const m = (this.state.activeSession && this.state.activeSession.metrics) || {};
+        const setVal = (id, v) => {
+            const el = document.getElementById(id);
+            if (el) el.value = (v === null || v === undefined) ? '' : v;
+        };
+        setVal('input-weight',  m.weight);
+        setVal('input-bp-high', m.bpHigh);
+        setVal('input-bp-low',  m.bpLow);
+        setVal('input-pulse',   m.pulse);
+    },
+
     endSession() {
         if (!this.state.activeSession) return;
         if (!confirm('トレーニングを終了しますか？')) return;
+
+        // 入力されたままの測定値を最終反映
+        this.onMetricsChange();
 
         clearInterval(this.state.timerInterval);
 
@@ -270,6 +306,11 @@ const app = {
             document.getElementById('input-machine-name').value = '';
             document.getElementById('history-hint').textContent = '';
             document.getElementById('current-exercises-list').innerHTML = '';
+            // 測定値入力欄もクリア
+            ['input-weight', 'input-bp-high', 'input-bp-low', 'input-pulse'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
             this.state.currentSets = 3;
             this.state.autofilledMachine = null;
             this.renderSetInputs();
@@ -624,6 +665,130 @@ const app = {
         document.getElementById('stat-streak').innerHTML        = `${this.calculateStreak()}<small>日</small>`;
 
         this.renderWeeklyBarChart();
+        this.renderBpChart();
+        this.renderWeightChart();
+    },
+
+    // セッション履歴から測定値を時系列で抽出
+    // keyFn: (metrics) => number|null  — 欠損時は null を返す
+    extractMetricSeries(keyFn) {
+        return this.state.history
+            .filter(s => s.metrics)
+            .map(s => ({ date: s.startTime, value: keyFn(s.metrics) }))
+            .filter(p => p.value !== null && p.value !== undefined && !isNaN(p.value))
+            .sort((a, b) => a.date - b.date);
+    },
+
+    /**
+     * 複数系列の折れ線グラフをSVGで描画。
+     * @param {string} elId   描画先要素ID
+     * @param {Array<{name:string,color:string,data:Array<{date,value}>}>} series
+     * @param {string} unit   Y軸ラベル末尾の単位
+     */
+    renderLineChart(elId, series, unit) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+
+        // 全系列でデータが空ならプレースホルダ表示
+        const allPoints = series.flatMap(s => s.data);
+        if (allPoints.length === 0) {
+            el.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">まだ記録がありません。</p>';
+            return;
+        }
+
+        const W = 320, H = 180;
+        const pad = { top: 24, right: 16, bottom: 40, left: 42 };
+        const cW = W - pad.left - pad.right;
+        const cH = H - pad.top - pad.bottom;
+
+        // X/Y 範囲
+        const dates = allPoints.map(p => p.date);
+        const minD = Math.min(...dates), maxD = Math.max(...dates);
+        const dateRange = (maxD - minD) || 1;
+
+        const values = allPoints.map(p => p.value);
+        let minV = Math.min(...values), maxV = Math.max(...values);
+        if (minV === maxV) { minV -= 1; maxV += 1; } // 単一点時
+        const valRange = maxV - minV;
+
+        const toX = d => pad.left + ((d - minD) / dateRange) * cW;
+        const toY = v => pad.top + cH - ((v - minV) / valRange) * cH;
+
+        // 系列を描画
+        const seriesHtml = series.map(s => {
+            if (s.data.length === 0) return '';
+            const pts = s.data.map(p => ({
+                x: toX(p.date), y: toY(p.value), v: p.value
+            }));
+            const polyline = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+            const dots = pts.map(p =>
+                `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${s.color}" stroke="#0B0E14" stroke-width="1"/>`
+            ).join('');
+            const line = `<polyline points="${polyline}" fill="none" stroke="${s.color}" stroke-width="2"
+                stroke-linejoin="round" stroke-linecap="round"/>`;
+            return line + dots;
+        }).join('');
+
+        // Y軸目盛 (3 tick)
+        const yTicks = [minV, (minV + maxV) / 2, maxV].map(v => Math.round(v * 10) / 10);
+        const yLabelsHtml = yTicks.map(v => {
+            const y = toY(v);
+            return `
+                <line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${(pad.left + cW).toFixed(1)}" y2="${y.toFixed(1)}"
+                    stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+                <text x="${(pad.left - 6).toFixed(1)}" y="${(y + 4).toFixed(1)}"
+                    text-anchor="end" fill="#8E99A8" font-size="10">${v}${unit || ''}</text>
+            `;
+        }).join('');
+
+        // X軸目盛 (最大4点)
+        const step = Math.max(1, Math.floor(allPoints.length / 4));
+        const uniqueDates = [...new Set(allPoints.map(p => p.date))].sort((a, b) => a - b);
+        const xSamples = uniqueDates.filter((_, i) => i % step === 0 || i === uniqueDates.length - 1);
+        const xLabelsHtml = xSamples.map(d => {
+            const x = toX(d);
+            const label = new Date(d).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+            return `<text x="${x.toFixed(1)}" y="${(pad.top + cH + 16).toFixed(1)}"
+                text-anchor="middle" fill="#8E99A8" font-size="10">${label}</text>`;
+        }).join('');
+
+        // 凡例 (系列が2つ以上のときのみ)
+        let legendHtml = '';
+        if (series.length > 1) {
+            const itemW = cW / series.length;
+            legendHtml = series.map((s, i) => {
+                const x = pad.left + i * itemW + itemW / 2;
+                return `
+                    <circle cx="${(x - 26).toFixed(1)}" cy="10" r="4" fill="${s.color}"/>
+                    <text x="${(x - 18).toFixed(1)}" y="14" fill="${s.color}" font-size="10">${s.name}</text>
+                `;
+            }).join('');
+        }
+
+        el.innerHTML = `
+            <svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+                ${legendHtml}
+                ${yLabelsHtml}
+                ${xLabelsHtml}
+                ${seriesHtml}
+            </svg>
+        `;
+    },
+
+    renderBpChart() {
+        const series = [
+            { name: '最高',  color: '#FF1744', data: this.extractMetricSeries(m => m.bpHigh) },
+            { name: '最低',  color: '#2979FF', data: this.extractMetricSeries(m => m.bpLow) },
+            { name: '脈拍',  color: '#FFD600', data: this.extractMetricSeries(m => m.pulse) }
+        ];
+        this.renderLineChart('bp-chart', series, '');
+    },
+
+    renderWeightChart() {
+        const series = [
+            { name: '体重', color: '#00C4AE', data: this.extractMetricSeries(m => m.weight) }
+        ];
+        this.renderLineChart('weight-chart', series, 'kg');
     },
 
     /**

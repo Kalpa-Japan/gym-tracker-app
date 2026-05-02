@@ -374,6 +374,7 @@ button {
 
 .metrics-field {
     flex: 1;
+    min-width: 0; /* flex itemを縮められるように (input intrinsic width 対策) */
     display: flex;
     flex-direction: column;
 }
@@ -385,6 +386,8 @@ button {
 }
 
 .metrics-field input {
+    width: 100%;
+    box-sizing: border-box;
     font-size: 0.95rem;
     padding: 0.4rem 0.6rem;
 }

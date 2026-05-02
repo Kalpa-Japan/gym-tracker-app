@@ -17,25 +17,34 @@ const app = {
         // 同期コードをまず即時表示（Firebaseの完了を待たない）
         this.updateSyncCodeDisplay();
 
-        // 認証状態の変化を受けてUI更新・初回ログイン移行を実行
-        let prevUid = undefined; // 初回コールバックで必ず UI を更新させるため undefined
+        // 起動直後の初回認証コールバックは init 側でマージするのでスキップ
+        let isInitialAuthCallback = true;
         firebaseSync.onAuthChangeCallback = async (user) => {
-            const newUid = user ? user.uid : null;
             this.renderAuthUI(user);
-            // null → user の遷移でのみ移行フローを発火
-            if (prevUid !== undefined && prevUid === null && newUid) {
-                await this.onLoginTransition(user);
+            if (isInitialAuthCallback) {
+                isInitialAuthCallback = false;
+                return;
             }
-            prevUid = newUid;
+            // 起動後の auth 状態変化 (動的なログイン/ログアウト) に対応
+            if (user) {
+                await this.onLoginTransition(user);
+            } else {
+                await this.mergeAfterLogout();
+            }
         };
 
         // 認証状態が確定するまで待つ（iOS でのリダイレクト復帰も考慮）
         await firebaseSync.waitForAuthReady();
 
-        // 現在のアクティブドキュメント（UIDまたは同期コード）とマージ
+        // 起動時のマージ：ログイン状態なら3ソース統合、未ログインなら sync-code doc と統合
         try {
-            const merged = await firebaseSync.mergeWithLocal(this.state.history);
-            if (merged.length !== this.state.history.length) {
+            let merged;
+            if (firebaseSync.currentUser) {
+                merged = await firebaseSync.migrateOnFirstLogin(firebaseSync.currentUser.uid, this.state.history);
+            } else {
+                merged = await firebaseSync.mergeWithLocal(this.state.history);
+            }
+            if (merged && merged.length !== this.state.history.length) {
                 this.state.history = merged;
                 localStorage.setItem('gymfit_history', JSON.stringify(merged));
             }
@@ -99,12 +108,18 @@ const app = {
 
     async logout() {
         await firebaseSync.logout();
-        // ログアウト後は sync-code ベースに戻るので UI 更新
+        // ログアウト後は sync-code ベースに戻るので UI 更新（コールバック経由でも呼ばれる）
         this.renderAuthUI(null);
+    },
+
+    // ログアウト後の同期コードドキュメントとのマージ
+    async mergeAfterLogout() {
         try {
             const merged = await firebaseSync.mergeWithLocal(this.state.history);
-            this.state.history = merged;
-            localStorage.setItem('gymfit_history', JSON.stringify(merged));
+            if (merged && merged.length !== this.state.history.length) {
+                this.state.history = merged;
+                localStorage.setItem('gymfit_history', JSON.stringify(merged));
+            }
             this.updateStats();
             this.renderRecentSessions();
         } catch (e) {
@@ -130,6 +145,8 @@ const app = {
         const loggedOut = document.getElementById('account-logged-out');
         const loggedIn = document.getElementById('account-logged-in');
         const emailEl = document.getElementById('account-email');
+        const banner = document.getElementById('login-banner');
+        const bannerText = document.getElementById('login-banner-text');
 
         if (user) {
             const initial = (user.email || user.displayName || '?').trim().charAt(0).toUpperCase();
@@ -140,6 +157,13 @@ const app = {
             if (loggedOut) loggedOut.classList.add('hidden');
             if (loggedIn) loggedIn.classList.remove('hidden');
             if (emailEl) emailEl.textContent = user.email || user.displayName || '(no email)';
+            if (banner) {
+                banner.classList.remove('login-banner-warn');
+                banner.classList.add('login-banner-ok');
+            }
+            if (bannerText) {
+                bannerText.textContent = `✓ ${user.email || user.displayName || 'ログイン中'}`;
+            }
         } else {
             if (btnAuth) {
                 btnAuth.textContent = 'ログイン';
@@ -148,6 +172,13 @@ const app = {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
             if (emailEl) emailEl.textContent = '-';
+            if (banner) {
+                banner.classList.remove('login-banner-ok');
+                banner.classList.add('login-banner-warn');
+            }
+            if (bannerText) {
+                bannerText.textContent = '⚠️ ログアウト中 — タップしてログインしてください';
+            }
         }
     },
 
@@ -667,6 +698,19 @@ const app = {
         this.renderWeeklyBarChart();
         this.renderBpChart();
         this.renderWeightChart();
+        this.renderDataInfoBadge();
+    },
+
+    // データ件数と最終更新日時のバッジを描画
+    renderDataInfoBadge() {
+        const el = document.getElementById('data-info-badge');
+        if (!el) return;
+        const count = this.state.history.length;
+        const lastTs = count > 0 ? Math.max(...this.state.history.map(s => s.startTime)) : null;
+        const lastStr = lastTs
+            ? new Date(lastTs).toLocaleDateString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric' })
+            : '-';
+        el.innerHTML = `履歴: <span class="data-count">${count}</span>件 / 最新: ${lastStr}`;
     },
 
     // セッション履歴から測定値を時系列で抽出

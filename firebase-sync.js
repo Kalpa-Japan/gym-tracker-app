@@ -229,44 +229,38 @@ const firebaseSync = {
         return merged;
     },
 
-    // 初回ログイン時の移行処理
-    // users/{uid} が既存ならそれとマージ
-    // 未存在ならローカル履歴＋旧syncCodeのデータをマージしてusers/{uid}へ保存
+    // ログイン時の同期処理
+    // 常に: ローカル履歴 + users/{uid} + users/{legacySyncCode} の3ソースをマージ
+    // → ログアウト中に sync-code に保存されたデータも必ず取り込まれる
     async migrateOnFirstLogin(uid, localHistory) {
         if (!this.isReady) return localHistory;
         this.showStatus('同期中...', false);
-        const uidData = await this.pullUid(uid);
-        if (uidData) {
-            // 既存UIDドキュメントとマージ
-            const remote = uidData.history || [];
-            const merged = this.mergeById(localHistory, remote);
-            if (merged.length > remote.length) {
-                await this.db.collection('users').doc(uid).set({
-                    history: merged,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                    ownerUid: uid
-                }, { merge: true });
-            }
-            this.showStatus('同期済み ✓', false);
-            return merged;
-        }
 
-        // 新規UID — 旧sync-codeのデータも取り込み
+        // 並列で uid doc と sync-code doc を取得
         const legacyCode = localStorage.getItem('gymfit_sync_code');
-        let legacyHistory = [];
-        if (legacyCode) {
-            const legacyData = await this.pullSyncCode(legacyCode);
-            if (legacyData && Array.isArray(legacyData.history)) {
-                legacyHistory = legacyData.history;
-            }
+        const [uidData, legacyData] = await Promise.all([
+            this.pullUid(uid),
+            legacyCode ? this.pullSyncCode(legacyCode) : Promise.resolve(null)
+        ]);
+
+        const uidHistory    = (uidData    && Array.isArray(uidData.history))    ? uidData.history    : [];
+        const legacyHistory = (legacyData && Array.isArray(legacyData.history)) ? legacyData.history : [];
+
+        // 3ソースを ID ベースでマージ
+        const merged = this.mergeById(this.mergeById(localHistory, uidHistory), legacyHistory);
+
+        // uid doc にデータが増えていたら保存（不要な書き込みは避ける）
+        const isNewDoc = !uidData;
+        const grew = merged.length > uidHistory.length;
+        if (isNewDoc || grew) {
+            const payload = {
+                history: merged,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                ownerUid: uid
+            };
+            if (isNewDoc) payload.migratedFromSyncCode = legacyCode || null;
+            await this.db.collection('users').doc(uid).set(payload, { merge: true });
         }
-        const merged = this.mergeById(this.mergeById(localHistory, legacyHistory), []);
-        await this.db.collection('users').doc(uid).set({
-            history: merged,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-            ownerUid: uid,
-            migratedFromSyncCode: legacyCode || null
-        });
         this.showStatus('同期済み ✓', false);
         return merged;
     },

@@ -307,6 +307,49 @@ button {
     animation: pulse 1.5s infinite;
 }
 
+/* データ件数バッジ */
+.data-info-badge {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-align: right;
+    padding: 0.3rem 0.5rem 0.4rem;
+}
+
+.data-info-badge .data-count {
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+/* ログイン状態バナー */
+.login-banner {
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    margin-bottom: 0.6rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: opacity 0.2s;
+}
+
+.login-banner-ok {
+    background: rgba(0, 196, 174, 0.12);
+    color: var(--accent-primary);
+    border-color: rgba(0, 196, 174, 0.4);
+}
+
+.login-banner-warn {
+    background: rgba(255, 23, 68, 0.12);
+    color: var(--accent-danger);
+    border-color: rgba(255, 23, 68, 0.4);
+    animation: pulse 2s infinite;
+}
+
+.login-banner:hover {
+    opacity: 0.85;
+}
+
 /* Metrics (体重・血圧・脈拍) 入力カード */
 .metrics-card {
     padding: 0.7rem;

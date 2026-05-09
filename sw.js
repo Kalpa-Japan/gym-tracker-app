@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gymfit-v11';
+const CACHE_NAME = 'gymfit-v12';
 
 // Files to cache for offline use
 const ASSETS = [

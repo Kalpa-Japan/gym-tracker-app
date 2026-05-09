@@ -262,8 +262,19 @@ const app = {
     // 測定値フィールド (体重・血圧・脈拍) の変更をセッションに反映
     onMetricsChange() {
         if (!this.state.activeSession) return;
+        // 値の正規化: 全角→半角、全角ピリオド/コンマ→半角ピリオド
+        // iOS Safari + 日本語キーボードで全角文字が混入するケースに対応
+        const normalize = (s) => {
+            if (typeof s !== 'string') s = String(s);
+            return s.trim()
+                .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                .replace(/[．。]/g, '.')
+                .replace(/[，、]/g, '.');
+        };
         const readNum = (id, parser) => {
-            const v = document.getElementById(id).value.trim();
+            const el = document.getElementById(id);
+            if (!el) return null;
+            const v = normalize(el.value);
             if (!v) return null;
             const n = parser(v);
             return isNaN(n) ? null : n;

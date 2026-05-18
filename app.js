@@ -56,22 +56,33 @@ const app = {
         this.renderRecentSessions();
         this.renderAuthUI(firebaseSync.currentUser);
 
-        // Restore active session from previous reload
-        const savedSession = JSON.parse(localStorage.getItem('gymfit_active_session'));
-        if (savedSession) {
-            const elapsedMinutes = (Date.now() - savedSession.startTime) / 60000;
+        // 旧仕様の active_session が残っていれば history に取り込む（移行）
+        const legacyActive = JSON.parse(localStorage.getItem('gymfit_active_session'));
+        if (legacyActive && !this.state.history.some(s => s.id === legacyActive.id)) {
+            legacyActive.active = true;
+            this.state.history.unshift(legacyActive);
+            localStorage.setItem('gymfit_history', JSON.stringify(this.state.history));
+        }
+        localStorage.removeItem('gymfit_active_session'); // 以後は history 内で管理
+
+        // history 内の進行中セッション (active:true) を復元 or 自動確定
+        const activeIdx = this.state.history.findIndex(s => s.active);
+        if (activeIdx >= 0) {
+            const s = this.state.history[activeIdx];
+            const elapsedMinutes = (Date.now() - s.startTime) / 60000;
             if (elapsedMinutes > MAX_SESSION_MINUTES) {
-                // 終了忘れと判断 — 2時間にキャップして自動的に履歴へ保存
-                savedSession.durationMinutes = MAX_SESSION_MINUTES;
-                savedSession.endTime = savedSession.startTime + MAX_SESSION_MINUTES * 60000;
-                this.state.history.unshift(savedSession);
+                // 終了忘れ — 2時間にキャップして確定
+                s.durationMinutes = MAX_SESSION_MINUTES;
+                s.endTime = s.startTime + MAX_SESSION_MINUTES * 60000;
+                s.active = false;
+                this.state.history[activeIdx] = s;
                 localStorage.setItem('gymfit_history', JSON.stringify(this.state.history));
-                localStorage.removeItem('gymfit_active_session');
                 firebaseSync.push(this.state.history);
                 this.updateStats();
                 this.renderRecentSessions();
             } else {
-                this.state.activeSession = savedSession;
+                // 進行中として復元
+                this.state.activeSession = s;
                 this.startTimer();
                 this.renderCurrentExercises();
                 this.toggleActiveSessionUI(true);
@@ -195,6 +206,21 @@ const app = {
         }
     },
 
+    // 進行中セッションを history 内へ反映して永続化する。
+    // 種目記録や測定値入力のたびに呼ぶことで「終了押し忘れ」でもデータが残る。
+    syncActiveSession() {
+        if (!this.state.activeSession) return;
+        const idx = this.state.history.findIndex(s => s.id === this.state.activeSession.id);
+        if (idx >= 0) {
+            this.state.history[idx] = this.state.activeSession;
+        } else {
+            this.state.history.unshift(this.state.activeSession);
+        }
+        this.saveHistory();          // localStorage + Firestore へ即保存
+        this.saveSessionState();     // 復元用 active_session も更新
+        this.renderRecentSessions(); // 進行中セッションも即リストに反映（記録の可視化）
+    },
+
     navigate(viewId) {
         document.querySelectorAll('.view').forEach(v => {
             v.classList.remove('active');
@@ -246,17 +272,23 @@ const app = {
     // --- Session ---
 
     startSession() {
-        const now = new Date();
+        // 前回の未終了セッションが残っていれば、まず確定保存する
+        if (this.state.activeSession) {
+            this.finalizeActiveSession(false);
+        }
+
+        const now = Date.now();
         this.state.activeSession = {
-            id: Date.now(),
-            startTime: now.getTime(),
+            id: now,
+            startTime: now,
             exercises: [],
-            metrics: {}
+            metrics: {},
+            active: true   // 進行中フラグ
         };
 
+        this.syncActiveSession();  // 開始時点で即 history に追加・保存
         this.startTimer();
         this.toggleActiveSessionUI(true);
-        this.saveSessionState();
     },
 
     // 測定値フィールド (体重・血圧・脈拍) の変更をセッションに反映
@@ -285,7 +317,7 @@ const app = {
             bpLow:  readNum('input-bp-low',  v => parseInt(v, 10)),
             pulse:  readNum('input-pulse',   v => parseInt(v, 10))
         };
-        this.saveSessionState();
+        this.syncActiveSession();   // 測定値入力ごとに即永続化
     },
 
     // セッション復元時に測定値入力欄へ書き戻す
@@ -301,33 +333,45 @@ const app = {
         setVal('input-pulse',   m.pulse);
     },
 
+    // ユーザー操作の「トレーニングを終了」
     endSession() {
-        if (!this.state.activeSession) return;
-        if (!confirm('トレーニングを終了しますか？')) return;
+        this.finalizeActiveSession(true);
+    },
 
-        // 入力されたままの測定値を最終反映
-        this.onMetricsChange();
+    /**
+     * 進行中セッションを確定（active フラグを外し時間を確定）して保存する。
+     * @param {boolean} askConfirm true=確認ダイアログと完了アラートを出す
+     */
+    finalizeActiveSession(askConfirm) {
+        if (!this.state.activeSession) return;
+        if (askConfirm && !confirm('トレーニングを終了しますか？')) return;
+
+        // 入力されたままの測定値を最終反映（confirm 後に呼ぶ）
+        if (this.state.activeSession) this.onMetricsChange();
 
         clearInterval(this.state.timerInterval);
 
-        const now = new Date();
-        const durationMs = now.getTime() - this.state.activeSession.startTime;
-        let durationMinutes = Math.round(durationMs / 60000);
+        const s = this.state.activeSession;
+        let durationMinutes = Math.round((Date.now() - s.startTime) / 60000);
         // 上限を超えていたらキャップ（終了忘れの保険）
         if (durationMinutes > MAX_SESSION_MINUTES) durationMinutes = MAX_SESSION_MINUTES;
-        this.state.activeSession.endTime = this.state.activeSession.startTime + durationMinutes * 60000;
-        this.state.activeSession.durationMinutes = durationMinutes;
+        s.endTime = s.startTime + durationMinutes * 60000;
+        s.durationMinutes = durationMinutes;
+        s.active = false;   // 確定
 
-        this.state.history.unshift(this.state.activeSession);
-        this.saveHistory();
+        // history 内の同一セッションを更新（無ければ追加）
+        const idx = this.state.history.findIndex(h => h.id === s.id);
+        if (idx >= 0) this.state.history[idx] = s;
+        else this.state.history.unshift(s);
 
         this.state.activeSession = null;
+        this.saveHistory();
         this.saveSessionState();
 
         this.toggleActiveSessionUI(false);
         this.updateStats();
         this.renderRecentSessions();
-        alert('トレーニングお疲れ様でした！記録を保存しました。');
+        if (askConfirm) alert('トレーニングお疲れ様でした！記録を保存しました。');
     },
 
     toggleActiveSessionUI(isActive) {
@@ -400,7 +444,7 @@ const app = {
         }
 
         this.state.activeSession.exercises.push({ machineNo: mNo, machineName: mName, sets });
-        this.saveSessionState();
+        this.syncActiveSession();   // 種目記録ごとに即永続化（終了忘れ対策）
         this.renderCurrentExercises();
 
         // Reset inputs
@@ -415,7 +459,7 @@ const app = {
     removeExercise(idx) {
         if (!this.state.activeSession) return;
         this.state.activeSession.exercises.splice(idx, 1);
-        this.saveSessionState();
+        this.syncActiveSession();
         this.renderCurrentExercises();
     },
 
@@ -1052,15 +1096,19 @@ const app = {
         this.state.history.slice(0, 3).forEach(s => {
             const dateStr = new Date(s.startTime).toLocaleDateString('ja-JP',
                 { month: 'numeric', day: 'numeric' });
+            const inProgress = s.active === true;
+            const timeLabel = inProgress
+                ? '<span style="color:var(--accent-danger)">進行中</span>'
+                : `<span style="color:var(--accent-primary)">時間: ${s.durationMinutes || 0}分</span>`;
             list.innerHTML += `
                 <div style="border-bottom:1px solid var(--glass-border);padding:0.8rem 0;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
-                        <span style="font-weight:600">日付: ${dateStr}</span>
+                        <span style="font-weight:600">日付: ${dateStr}${inProgress ? ' 🟢' : ''}</span>
                         <button class="delete-btn" onclick="app.deleteHistorySession(${s.id})" aria-label="このセッションを削除">✕</button>
                     </div>
                     <div style="font-size:0.9rem;color:var(--text-muted);display:flex;gap:1rem;">
                         <span>種目数: ${s.exercises.length}</span>
-                        <span style="color:var(--accent-primary)">時間: ${s.durationMinutes || 0}分</span>
+                        ${timeLabel}
                     </div>
                 </div>
             `;
